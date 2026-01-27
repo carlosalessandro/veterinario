@@ -4,6 +4,8 @@ import '../models/owner.dart';
 import '../models/pet.dart';
 import '../models/appointment.dart';
 import '../models/vaccine.dart';
+import '../models/payment.dart';
+import '../models/service.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -23,8 +25,9 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
+      onUpgrade: _upgradeDB,
     );
   }
 
@@ -92,6 +95,73 @@ class DatabaseHelper {
         FOREIGN KEY (petId) REFERENCES pets (id) ON DELETE CASCADE
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE services (
+        id $idType,
+        name $textType,
+        description $textType,
+        price $realType,
+        category $textType,
+        duration $intType,
+        active $intType,
+        createdAt $textType
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE payments (
+        id $idType,
+        appointmentId $intType,
+        serviceId INTEGER,
+        amount $realType,
+        paymentMethod $textType,
+        status $textType,
+        paymentDate $textType,
+        notes TEXT,
+        createdAt $textType,
+        FOREIGN KEY (appointmentId) REFERENCES appointments (id) ON DELETE CASCADE,
+        FOREIGN KEY (serviceId) REFERENCES services (id)
+      )
+    ''');
+  }
+
+  Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      const idType = 'INTEGER PRIMARY KEY AUTOINCREMENT';
+      const textType = 'TEXT NOT NULL';
+      const intType = 'INTEGER NOT NULL';
+      const realType = 'REAL NOT NULL';
+
+      await db.execute('''
+        CREATE TABLE services (
+          id $idType,
+          name $textType,
+          description $textType,
+          price $realType,
+          category $textType,
+          duration $intType,
+          active $intType,
+          createdAt $textType
+        )
+      ''');
+
+      await db.execute('''
+        CREATE TABLE payments (
+          id $idType,
+          appointmentId $intType,
+          serviceId INTEGER,
+          amount $realType,
+          paymentMethod $textType,
+          status $textType,
+          paymentDate $textType,
+          notes TEXT,
+          createdAt $textType,
+          FOREIGN KEY (appointmentId) REFERENCES appointments (id) ON DELETE CASCADE,
+          FOREIGN KEY (serviceId) REFERENCES services (id)
+        )
+      ''');
+    }
   }
 
   // Owner CRUD
@@ -205,6 +275,105 @@ class DatabaseHelper {
   Future<int> deleteVaccine(int id) async {
     final db = await database;
     return await db.delete('vaccines', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // Service CRUD
+  Future<int> createService(Service service) async {
+    final db = await database;
+    return await db.insert('services', service.toMap());
+  }
+
+  Future<List<Service>> getAllServices() async {
+    final db = await database;
+    final result = await db.query('services', where: 'active = ?', whereArgs: [1], orderBy: 'name ASC');
+    return result.map((map) => Service.fromMap(map)).toList();
+  }
+
+  Future<Service?> getService(int id) async {
+    final db = await database;
+    final maps = await db.query('services', where: 'id = ?', whereArgs: [id]);
+    if (maps.isNotEmpty) {
+      return Service.fromMap(maps.first);
+    }
+    return null;
+  }
+
+  Future<int> updateService(Service service) async {
+    final db = await database;
+    return await db.update('services', service.toMap(), where: 'id = ?', whereArgs: [service.id]);
+  }
+
+  Future<int> deleteService(int id) async {
+    final db = await database;
+    return await db.delete('services', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // Payment CRUD
+  Future<int> createPayment(Payment payment) async {
+    final db = await database;
+    return await db.insert('payments', payment.toMap());
+  }
+
+  Future<List<Payment>> getAllPayments() async {
+    final db = await database;
+    final result = await db.query('payments', orderBy: 'paymentDate DESC');
+    return result.map((map) => Payment.fromMap(map)).toList();
+  }
+
+  Future<List<Payment>> getPaymentsByAppointment(int appointmentId) async {
+    final db = await database;
+    final result = await db.query('payments', where: 'appointmentId = ?', whereArgs: [appointmentId]);
+    return result.map((map) => Payment.fromMap(map)).toList();
+  }
+
+  Future<Payment?> getPayment(int id) async {
+    final db = await database;
+    final maps = await db.query('payments', where: 'id = ?', whereArgs: [id]);
+    if (maps.isNotEmpty) {
+      return Payment.fromMap(maps.first);
+    }
+    return null;
+  }
+
+  Future<int> updatePayment(Payment payment) async {
+    final db = await database;
+    return await db.update('payments', payment.toMap(), where: 'id = ?', whereArgs: [payment.id]);
+  }
+
+  Future<int> deletePayment(int id) async {
+    final db = await database;
+    return await db.delete('payments', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // Financial Reports
+  Future<double> getTotalRevenue({DateTime? startDate, DateTime? endDate}) async {
+    final db = await database;
+    final result = await db.rawQuery('''
+      SELECT SUM(amount) as total
+      FROM payments
+      WHERE status = 'paid'
+      ${startDate != null ? "AND paymentDate >= '${startDate.toIso8601String()}'" : ''}
+      ${endDate != null ? "AND paymentDate <= '${endDate.toIso8601String()}'" : ''}
+    ''');
+    return result.first['total'] as double? ?? 0.0;
+  }
+
+  Future<Map<String, double>> getRevenueByPaymentMethod({DateTime? startDate, DateTime? endDate}) async {
+    final db = await database;
+    final result = await db.rawQuery('''
+      SELECT paymentMethod, SUM(amount) as total
+      FROM payments
+      WHERE status = 'paid'
+      ${startDate != null ? "AND paymentDate >= '${startDate.toIso8601String()}'" : ''}
+      ${endDate != null ? "AND paymentDate <= '${endDate.toIso8601String()}'" : ''}
+      GROUP BY paymentMethod
+    ''');
+    
+    final Map<String, double> revenue = {};
+    for (var row in result) {
+      revenue[row['paymentMethod'] as String] = row['total'] as double? ?? 0.0;
+    }
+    return revenue;
   }
 
   Future close() async {
