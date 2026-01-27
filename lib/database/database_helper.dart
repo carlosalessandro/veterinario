@@ -6,6 +6,8 @@ import '../models/appointment.dart';
 import '../models/vaccine.dart';
 import '../models/payment.dart';
 import '../models/service.dart';
+import '../models/medical_record.dart';
+import '../models/pet_photo.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -25,7 +27,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -124,6 +126,39 @@ class DatabaseHelper {
         FOREIGN KEY (serviceId) REFERENCES services (id)
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE medical_records (
+        id $idType,
+        appointmentId $intType,
+        chiefComplaint $textType,
+        anamnesis $textType,
+        physicalExam $textType,
+        temperature TEXT,
+        heartRate TEXT,
+        respiratoryRate TEXT,
+        weight TEXT,
+        diagnosis $textType,
+        treatment $textType,
+        prognosis TEXT,
+        observations TEXT,
+        createdAt $textType,
+        FOREIGN KEY (appointmentId) REFERENCES appointments (id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE pet_photos (
+        id $idType,
+        petId $intType,
+        photoPath $textType,
+        description TEXT,
+        category $textType,
+        photoDate $textType,
+        createdAt $textType,
+        FOREIGN KEY (petId) REFERENCES pets (id) ON DELETE CASCADE
+      )
+    ''');
   }
 
   Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
@@ -159,6 +194,45 @@ class DatabaseHelper {
           createdAt $textType,
           FOREIGN KEY (appointmentId) REFERENCES appointments (id) ON DELETE CASCADE,
           FOREIGN KEY (serviceId) REFERENCES services (id)
+        )
+      ''');
+    }
+
+    if (oldVersion < 3) {
+      const idType = 'INTEGER PRIMARY KEY AUTOINCREMENT';
+      const textType = 'TEXT NOT NULL';
+      const intType = 'INTEGER NOT NULL';
+
+      await db.execute('''
+        CREATE TABLE medical_records (
+          id $idType,
+          appointmentId $intType,
+          chiefComplaint $textType,
+          anamnesis $textType,
+          physicalExam $textType,
+          temperature TEXT,
+          heartRate TEXT,
+          respiratoryRate TEXT,
+          weight TEXT,
+          diagnosis $textType,
+          treatment $textType,
+          prognosis TEXT,
+          observations TEXT,
+          createdAt $textType,
+          FOREIGN KEY (appointmentId) REFERENCES appointments (id) ON DELETE CASCADE
+        )
+      ''');
+
+      await db.execute('''
+        CREATE TABLE pet_photos (
+          id $idType,
+          petId $intType,
+          photoPath $textType,
+          description TEXT,
+          category $textType,
+          photoDate $textType,
+          createdAt $textType,
+          FOREIGN KEY (petId) REFERENCES pets (id) ON DELETE CASCADE
         )
       ''');
     }
@@ -376,8 +450,51 @@ class DatabaseHelper {
     return revenue;
   }
 
+  // MedicalRecord CRUD
+  Future<int> createMedicalRecord(MedicalRecord record) async {
+    final db = await database;
+    return await db.insert('medical_records', record.toMap());
+  }
+
+  Future<MedicalRecord?> getMedicalRecordByAppointment(int appointmentId) async {
+    final db = await database;
+    final maps = await db.query('medical_records', where: 'appointmentId = ?', whereArgs: [appointmentId]);
+    if (maps.isNotEmpty) {
+      return MedicalRecord.fromMap(maps.first);
+    }
+    return null;
+  }
+
+  Future<int> updateMedicalRecord(MedicalRecord record) async {
+    final db = await database;
+    return await db.update('medical_records', record.toMap(), where: 'id = ?', whereArgs: [record.id]);
+  }
+
+  Future<int> deleteMedicalRecord(int id) async {
+    final db = await database;
+    return await db.delete('medical_records', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // PetPhoto CRUD
+  Future<int> createPetPhoto(PetPhoto photo) async {
+    final db = await database;
+    return await db.insert('pet_photos', photo.toMap());
+  }
+
+  Future<List<PetPhoto>> getPhotosByPet(int petId) async {
+    final db = await database;
+    final result = await db.query('pet_photos', where: 'petId = ?', whereArgs: [petId], orderBy: 'photoDate DESC');
+    return result.map((map) => PetPhoto.fromMap(map)).toList();
+  }
+
+  Future<int> deletePetPhoto(int id) async {
+    final db = await database;
+    return await db.delete('pet_photos', where: 'id = ?', whereArgs: [id]);
+  }
+
   Future close() async {
     final db = await database;
     db.close();
   }
 }
+

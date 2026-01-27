@@ -8,6 +8,8 @@ import '../providers/appointment_provider.dart';
 import '../database/database_helper.dart';
 import 'pet_form_screen.dart';
 import 'vaccine_form_screen.dart';
+import 'medical_record_screen.dart';
+import 'pet_gallery_screen.dart';
 
 class PetDetailScreen extends StatelessWidget {
   final Pet pet;
@@ -17,12 +19,24 @@ class PetDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: Text(pet.name),
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           actions: [
+            IconButton(
+              icon: const Icon(Icons.photo_library),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PetGalleryScreen(pet: pet),
+                  ),
+                );
+              },
+              tooltip: 'Galeria',
+            ),
             IconButton(
               icon: const Icon(Icons.edit),
               onPressed: () {
@@ -69,6 +83,7 @@ class PetDetailScreen extends StatelessWidget {
               Tab(text: 'Informações', icon: Icon(Icons.info)),
               Tab(text: 'Consultas', icon: Icon(Icons.medical_services)),
               Tab(text: 'Vacinas', icon: Icon(Icons.vaccines)),
+              Tab(text: 'Prontuários', icon: Icon(Icons.assignment)),
             ],
           ),
         ),
@@ -77,6 +92,7 @@ class PetDetailScreen extends StatelessWidget {
             _InfoTab(pet: pet),
             _AppointmentsTab(pet: pet),
             _VaccinesTab(pet: pet),
+            _MedicalRecordsTab(pet: pet),
           ],
         ),
       ),
@@ -299,6 +315,56 @@ class _InfoRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+
+class _MedicalRecordsTab extends StatelessWidget {
+  final Pet pet;
+
+  const _MedicalRecordsTab({required this.pet});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: context.read<AppointmentProvider>().getAppointmentsByPet(pet.id!),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final appointments = snapshot.data!;
+        if (appointments.isEmpty) {
+          return const Center(child: Text('Nenhuma consulta registrada'));
+        }
+
+        return ListView.builder(
+          itemCount: appointments.length,
+          itemBuilder: (context, index) {
+            final appointment = appointments[index];
+            return Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: ListTile(
+                leading: const Icon(Icons.assignment),
+                title: Text(appointment.type),
+                subtitle: Text(
+                  DateFormat('dd/MM/yyyy HH:mm').format(appointment.dateTime),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MedicalRecordScreen(appointment: appointment),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
