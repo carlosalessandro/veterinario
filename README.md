@@ -5,6 +5,7 @@ Um aplicativo completo de gerenciamento veterinário desenvolvido em Flutter, co
 [![Flutter](https://img.shields.io/badge/Flutter-3.9.0+-02569B?logo=flutter)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.0+-0175C2?logo=dart)](https://dart.dev)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![GitHub](https://img.shields.io/badge/GitHub-carlosalessandro%2Fveterinario-blue?logo=github)](https://github.com/carlosalessandro/veterinario)
 
 ## 📑 Documentação
 
