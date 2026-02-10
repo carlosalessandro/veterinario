@@ -4,19 +4,70 @@ import 'package:intl/intl.dart';
 import '../providers/pet_provider.dart';
 import '../providers/owner_provider.dart';
 import '../providers/appointment_provider.dart';
+import '../providers/auth_provider.dart';
+import 'login_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final username = authProvider.username;
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        actions: [
+          if (username != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Row(
+                children: [
+                  const CircleAvatar(
+                    radius: 16,
+                    child: Icon(Icons.person, size: 20),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    username,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) async {
+              if (value == 'logout') {
+                await authProvider.signOut();
+                if (context.mounted) {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (context) => const LoginScreen(),
+                    ),
+                  );
+                }
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout),
+                    SizedBox(width: 8),
+                    Text('Sair'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: Consumer3<PetProvider, OwnerProvider, AppointmentProvider>(
-        builder: (context, petProvider, ownerProvider, appointmentProvider, child) {
+        builder: (context, petProvider, ownerProvider, appointmentProvider, _) {
           final todayAppointments = appointmentProvider.appointments.where((apt) {
             final now = DateTime.now();
             return apt.dateTime.year == now.year &&

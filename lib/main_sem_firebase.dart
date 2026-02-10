@@ -5,9 +5,7 @@ import 'providers/owner_provider.dart';
 import 'providers/appointment_provider.dart';
 import 'providers/service_provider.dart';
 import 'providers/payment_provider.dart';
-import 'providers/auth_provider.dart';
-import 'screens/login_screen.dart';
-import 'screens/home_screen.dart';
+import 'screens/login_screen_demo.dart';
 
 void main() {
   runApp(const MyApp());
@@ -20,7 +18,6 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => PetProvider()),
         ChangeNotifierProvider(create: (_) => OwnerProvider()),
         ChangeNotifierProvider(create: (_) => AppointmentProvider()),
@@ -43,13 +40,7 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ),
-        home: Consumer<AuthProvider>(
-          builder: (context, authProvider, _) {
-            return authProvider.isAuthenticated 
-                ? const HomeScreen() 
-                : const LoginScreen();
-          },
-        ),
+        home: const LoginScreenDemo(),
       ),
     );
   }

@@ -56,6 +56,9 @@ dependencies:
   
   # Camera and Images
   image_picker: ^1.0.7
+  
+  # Authentication
+  shared_preferences: ^2.2.2
 
 dev_dependencies:
   flutter_test:
